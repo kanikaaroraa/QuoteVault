@@ -11,52 +11,94 @@ struct QuoteExportView: View {
     let quote: Quote
     @Environment(\.dismiss) var dismiss
     
-    // Req 5: At least 3 different styles
-    enum CardTheme: String, CaseIterable, Identifiable {
-        case classic = "Classic" // White clean
-        case midnight = "Midnight" // Dark gradient
-        case sunset = "Sunset" // Orange gradient
-        var id: String { self.rawValue }
-    }
+    // 1️⃣ State to track the selected theme
+    @State private var selectedTheme: Theme = .black
     
-    @State private var selectedTheme: CardTheme = .classic
-    @State private var showSystemShareSheet = false
-    @State private var generatedImage: UIImage?
+    // 2️⃣ Define the available themes and their properties
+    enum Theme: String, CaseIterable, Identifiable {
+        case black
+        case white
+        case gradient
+        
+        var id: String { self.rawValue }
+        
+        var textColor: Color {
+            switch self {
+            case .black, .gradient: return .white
+            case .white: return .black
+            }
+        }
+        
+        var accentColor: Color {
+            switch self {
+            case .black: return .white.opacity(0.5)
+            case .white: return .blue.opacity(0.6)
+            case .gradient: return .white.opacity(0.7)
+            }
+        }
+        
+        // Using @ViewBuilder allows us to return different types of views (Color vs LinearGradient)
+        @ViewBuilder var backgroundView: some View {
+            switch self {
+            case .black:
+                Color.black
+            case .white:
+                Color.white
+            case .gradient:
+                LinearGradient(
+                    colors: [Color(red: 0.1, green: 0.1, blue: 0.5), Color(red: 0.5, green: 0.1, blue: 0.6)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
+    }
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                Spacer()
+            ZStack {
+                Color(UIColor.systemGroupedBackground)
+                    .ignoresSafeArea()
                 
-                // 1. The Preview Card
-                cardView
-                    .shadow(radius: 10)
-                
-                // 2. Theme Selector
-                Picker("Theme", selection: $selectedTheme) {
-                    ForEach(CardTheme.allCases) { theme in
-                        Text(theme.rawValue).tag(theme)
+                VStack(spacing: 20) {
+                    // 3️⃣ Theme Selector UI
+                    themeSelector
+                        .padding(.top)
+                    
+                    Spacer()
+                    
+                    // The Card itself
+                    cardView
+                        // Add a subtle border for the white card so it pops against the gray background
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color.gray.opacity(0.2), lineWidth: selectedTheme == .white ? 1 : 0)
+                        )
+                        .shadow(radius: 10)
+                    
+                    Spacer()
+                    
+                    // Share Button
+                    Button(action: {
+                        // Tiny delay to ensure smooth animation before capturing
+                        Task {
+                            try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                            exportAndShare()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("Share Quote")
+                        }
+                        .bold()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                     }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                
-                Spacer()
-                
-                // 3. Share Button
-                Button(action: exportImage) {
-                    HStack {
-                        Image(systemName: "square.and.arrow.up")
-                        Text("Share Quote")
-                    }
-                    .bold()
-                    .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
                 }
-                .padding()
             }
             .navigationTitle("Share Quote")
             .navigationBarTitleDisplayMode(.inline)
@@ -65,80 +107,105 @@ struct QuoteExportView: View {
                     Button("Close") { dismiss() }
                 }
             }
-            // 4. The actual Share Sheet Popup
-            .sheet(isPresented: $showSystemShareSheet) {
-                if let image = generatedImage {
-                    ShareSheet(items: [image, quote.content])
-                }
-            }
         }
     }
     
-    // The actual design of the card to be exported
+    // MARK: - Theme Selector Subview
+    var themeSelector: some View {
+        HStack(spacing: 20) {
+            ForEach(Theme.allCases) { theme in
+                Button {
+                    withAnimation {
+                        selectedTheme = theme
+                    }
+                } label: {
+                    // Create circles representing the themes
+                    ZStack {
+                        theme.backgroundView
+                            .clipShape(Circle())
+                            .frame(width: 44, height: 44)
+                        
+                        // Add a ring around the selected one
+                        if selectedTheme == theme {
+                            Circle()
+                                .stroke(Color.blue, lineWidth: 3)
+                                .frame(width: 52, height: 52)
+                        }
+                        
+                        // Add a faint border to the white circle so it's visible
+                        if theme == .white {
+                            Circle()
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(30)
+    }
+    
+    // MARK: - The Dynamic Card Design
     var cardView: some View {
         VStack(spacing: 20) {
             Image(systemName: "quote.opening")
                 .font(.largeTitle)
-                .foregroundColor(themeTextColor.opacity(0.5))
+                // Use the dynamic accent color
+                .foregroundColor(selectedTheme.accentColor)
             
             Text(quote.content)
                 .font(.custom("Georgia", size: 24))
                 .fontWeight(.medium)
                 .multilineTextAlignment(.center)
-                .foregroundColor(themeTextColor)
+                // Use the dynamic text color
+                .foregroundColor(selectedTheme.textColor)
                 .padding(.horizontal)
                 .fixedSize(horizontal: false, vertical: true)
             
             Text("- \(quote.author)")
                 .font(.headline)
-                .foregroundColor(themeTextColor.opacity(0.8))
+                // Use the dynamic text color with some opacity
+                .foregroundColor(selectedTheme.textColor.opacity(0.8))
             
             Text("Quote Vault")
                 .font(.caption)
                 .textCase(.uppercase)
-                .foregroundColor(themeTextColor.opacity(0.4))
+                .foregroundColor(selectedTheme.textColor.opacity(0.5))
                 .padding(.top, 10)
         }
         .padding(40)
-        .frame(width: 300, height: 400) // Fixed size for consistent export
-        .background(themeBackground)
+        .frame(width: 300, height: 400)
+        // 4️⃣ Apply the dynamic background view from the theme enum
+        .background(selectedTheme.backgroundView)
         .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(themeTextColor.opacity(0.1), lineWidth: 1)
-        )
     }
     
-    // Logic to render the View into an Image
+    // MARK: - Export & Share Logic
     @MainActor
-    func exportImage() {
+    func exportAndShare() {
+        // The renderer will now capture the card exactly as it looks with the selected theme
         let renderer = ImageRenderer(content: cardView)
-        renderer.scale = 3.0 // High quality
+        renderer.scale = UIScreen.main.scale
         
         if let image = renderer.uiImage {
-            generatedImage = image
-            showSystemShareSheet = true
+            presentShareSheet(items: [image, quote.content])
         }
     }
     
-    // MARK: - Style Helpers
-    var themeBackground: some View {
-        switch selectedTheme {
-        case .classic: return AnyView(Color.white)
-        case .midnight: return AnyView(
-            LinearGradient(colors: [Color.black, Color(uiColor: .darkGray)], startPoint: .top, endPoint: .bottom)
-        )
-        case .sunset: return AnyView(
-            LinearGradient(colors: [Color.orange, Color.pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
-        }
-    }
-    
-    var themeTextColor: Color {
-        switch selectedTheme {
-        case .classic: return .black
-        case .midnight, .sunset: return .white
+    // MARK: - The "Silver Bullet" Fix (Keep this existing code)
+    func presentShareSheet(items: [Any]) {
+        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            
+            var topController = rootVC
+            while let presented = topController.presentedViewController {
+                topController = presented
+            }
+            
+            topController.present(activityVC, animated: true)
         }
     }
 }
-

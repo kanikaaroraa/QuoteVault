@@ -21,12 +21,18 @@ struct MainView: View {
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
+            CollectionsView()
+                .tabItem {
+                    Label("Collections", systemImage: "folder")
+                }
             
-            // We will build Settings later, but here is a placeholder
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
+            
+
+            
         }
     }
 }

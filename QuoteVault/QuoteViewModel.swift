@@ -93,4 +93,15 @@ class QuoteViewModel: ObservableObject {
             }
         }
     }
+    
+    func delete(quote: Quote) {
+            if let index = quotes.firstIndex(where: { $0.id == quote.id }) {
+                quotes.remove(at: index)
+            }
+        }
+
+
+
+    
 }
+

@@ -65,4 +65,18 @@ class AuthViewModel: ObservableObject {
             isAuthenticated = false
         }
     }
+    // Add this inside AuthViewModel class
+    func sendPasswordReset(email: String) async {
+        isLoading = true
+        errorMessage = ""
+        do {
+            // This sends a reset email to the user
+            try await supabase.auth.resetPasswordForEmail(email)
+            errorMessage = "Check your email for the password reset link."
+            isLoading = false
+        } catch {
+            errorMessage = "Error: \(error.localizedDescription)"
+            isLoading = false
+        }
+    }
 }

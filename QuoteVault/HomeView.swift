@@ -4,10 +4,17 @@
 //
 //  Created by Kanika Arora on 13/01/26.
 //
+
 import SwiftUI
 
 struct HomeView: View {
+    
+    // Controls the Share Sheet
     @State private var quoteToShare: Quote?
+    
+    // 👇 THIS controls the "Add to Collection" Sheet
+    @State private var quoteForCollection: Quote?
+    
     @StateObject var vm = QuoteViewModel()
     
     let categories = ["Motivation", "Love", "Success", "Wisdom", "Humor"]
@@ -15,7 +22,7 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Category Filter (Horizontal Scroll)
+                // Category Filter
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
                         CategoryButton(title: "All", isSelected: vm.selectedCategory == nil) {
@@ -31,8 +38,7 @@ struct HomeView: View {
                 }
                 .background(Color(.systemGroupedBackground))
                 
-              
-
+                // Quote of the Day Section
                 if let dailyQuote = vm.quoteOfTheDay {
                     VStack(alignment: .center) {
                         Text("QUOTE OF THE DAY")
@@ -51,7 +57,14 @@ struct HomeView: View {
                             } label: {
                                 Label(vm.favorites.contains(dailyQuote.id) ? "Unfavorite" : "Favorite", systemImage: "heart")
                             }
-
+                            
+                            // 👇 NEW: Add to Collection Button
+                            Button {
+                                quoteForCollection = dailyQuote
+                            } label: {
+                                Label("Add to Collection", systemImage: "folder.badge.plus")
+                            }
+                            
                             Button {
                                 quoteToShare = dailyQuote
                             } label: {
@@ -75,24 +88,72 @@ struct HomeView: View {
                             QuoteCard(quote: quote, isFavorite: vm.favorites.contains(quote.id)) {
                                 vm.toggleFavorite(quote: quote)
                             }
+                            .contextMenu {
+                                Button {
+                                    vm.toggleFavorite(quote: quote)
+                                } label: {
+                                    Label(vm.favorites.contains(quote.id) ? "Unfavorite" : "Favorite", systemImage: "heart")
+                                }
+                                
+                                // 👇 NEW: Add to Collection Button (For List Items)
+                                Button {
+                                    quoteForCollection = quote
+                                } label: {
+                                    Label("Add to Collection", systemImage: "folder.badge.plus")
+                                }
+                                
+                                Button {
+                                    quoteToShare = quote
+                                } label: {
+                                    Label("Share Quote", systemImage: "square.and.arrow.up")
+                                }
+                                
+                                Button(role: .destructive){
+                                    vm.delete(quote: quote)
+                                } label : {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    vm.delete(quote: quote)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
+                            
                         }
+                        
                     }
                     .listStyle(.plain)
                     .refreshable {
-                        await vm.fetchData() // Pull to refresh (Req 2)
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        await vm.fetchData()
                     }
                 }
             }
             .navigationTitle("Daily Wisdom")
             .searchable(text: $vm.searchText, prompt: "Search quotes or authors...")
-        }
-        .sheet(item: $quoteToShare) { quote in
-            QuoteExportView(quote: quote)
+            
+            
+            
+            // Sheet 1: Export/Share
+            .sheet(item: $quoteToShare) { quote in
+                QuoteExportView(quote: quote)
+            }
+            
+            // 👇 Sheet 2: Add to Collection Picker
+            .sheet(item: $quoteForCollection) { quote in
+                AddToCollectionView(quote: quote)
+            }
         }
     }
 }
+
+
+// ... (The rest of your file: CategoryButton, QuoteCard, and #Preview remain exactly the same)
 
 // Subview: Category Button
 struct CategoryButton: View {
@@ -151,12 +212,13 @@ struct QuoteCard: View {
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemGroupedBackground)) // Adapts to Dark Mode (Req 6)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
         .padding(.vertical, 4)
     }
 }
+
 #Preview {
     HomeView()
 }

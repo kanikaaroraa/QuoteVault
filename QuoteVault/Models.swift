@@ -34,3 +34,15 @@ struct Profile: Codable {
         case avatarUrl = "avatar_url"
     }
 }
+
+struct QuoteCollection: Identifiable, Codable, Hashable {
+    let id: UUID
+    let name: String
+    var icon: String? // This must be a var or let, but Optional is key for older data
+    
+    
+    var displayIcon: String {
+        return icon ?? "folder.fill"
+    }
+}
+

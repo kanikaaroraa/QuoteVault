@@ -37,7 +37,7 @@ struct FavoritesView: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("My Collection")
+            .navigationTitle("Favorites")
         }
     }
 }
