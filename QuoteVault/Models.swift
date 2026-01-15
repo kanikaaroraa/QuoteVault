@@ -20,6 +20,18 @@ struct Quote: Identifiable, Codable, Hashable {
         case id, content, author, category
         case createdAt = "created_at"
     }
+    
+
+    var displayAuthor: String {
+        let clean = author.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Check for various "bad" data types
+        if clean.isEmpty ||
+           clean.caseInsensitiveCompare("unknown") == .orderedSame ||
+           clean.caseInsensitiveCompare("null") == .orderedSame {
+            return "Anonymous"
+        }
+        return clean
+    }
 }
 
 struct Profile: Codable {

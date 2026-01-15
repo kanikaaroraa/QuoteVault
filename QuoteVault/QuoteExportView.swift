@@ -163,7 +163,7 @@ struct QuoteExportView: View {
                 .padding(.horizontal)
                 .fixedSize(horizontal: false, vertical: true)
             
-            Text("- \(quote.author)")
+            Text("- \(quote.displayAuthor)")
                 .font(.headline)
                 // Use the dynamic text color with some opacity
                 .foregroundColor(selectedTheme.textColor.opacity(0.8))

@@ -205,7 +205,7 @@ struct QuoteCard: View {
             
             HStack {
                 Spacer()
-                Text("- " + quote.author)
+                Text("- " + quote.displayAuthor)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .italic()
